@@ -17,7 +17,6 @@ This project is the digital/microcontroller counterpart to an analog fan control
 | Platform | Autodesk Tinkercad |
 | Type | Circuit + Code Simulation |
 | Board | Arduino UNO |
-| Link | *(Add your Tinkercad project link here)* |
 
 ---
 
@@ -139,11 +138,6 @@ arduino-temperature-fan-automation/
 
 ---
 
-## 🔗 Tinkercad Project Link
-
-> *(Paste your Tinkercad shared project URL here)*
-
----
 
 ## 📄 License
 
@@ -157,12 +151,11 @@ See the [LICENSE](LICENSE) file for full details.
 ## 👤 Author
 
 **Mamoon**  
-Electronics Engineering Student
+Robotics Engineering Student
 
 ---
 
 ## 🙏 Acknowledgements
 
-- Course Instructor: **Engr. Fazeel Abbas**
 - Simulation Tool: [Autodesk Tinkercad](https://www.tinkercad.com)
 - References: Arduino documentation and analog electronics coursework
