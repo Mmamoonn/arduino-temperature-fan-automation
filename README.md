@@ -1,12 +1,12 @@
 # 🌡️ Arduino-Based Smart Temperature Monitoring and Fan Automation System
 
-A simulation-based project built on **Autodesk Tinkercad** that uses an Arduino UNO to monitor ambient temperature via a sensor and automatically control a DC fan and LED indicators based on predefined temperature thresholds — no analog design required.
+A simulation-based project built on **Autodesk Tinkercad** that uses an Arduino UNO to monitor ambient temperature via a TMP sensor and automatically control a DC fan speed, while displaying the real-time temperature on a **16x2 LCD screen**.
 
 ---
 
 ## 📌 Overview
 
-This project is the digital/microcontroller counterpart to an analog fan control design. Instead of op-amps and thermistors, an Arduino reads temperature data, makes decisions in software, and drives a fan and LEDs accordingly. The entire circuit is simulated in **Autodesk Tinkercad**.
+This project is the digital/microcontroller counterpart to an analog fan control design. An Arduino reads temperature data from a TMP sensor, displays it live on an LCD, and drives a DC fan at variable speed using PWM — all simulated in **Autodesk Tinkercad**.
 
 ---
 
@@ -21,36 +21,44 @@ This project is the digital/microcontroller counterpart to an analog fan control
 
 ---
 
+## 🖼️ Simulation Screenshot
+
+![Tinkercad Simulation](simulation/tinkercad_simulation.png)
+
+> The LCD displays real-time temperature (e.g. `T: 74.71`) while the fan spins at speed proportional to the temperature reading.
+
+---
+
 ## ⚙️ How It Works
 
 ```
-[Temperature Sensor (TMP36 / LM35)]
-              │
-              ▼
-     [Arduino UNO - Analog Pin]
-              │
-       ┌──────┴──────┐
-       ▼             ▼
-  [DC Fan via     [LED Indicators]
-   Transistor]    🔴 High Temp
-                  🟡 Medium Temp
-                  🟢 Normal Temp
+[TMP Temperature Sensor]
+          │
+          ▼
+ [Arduino UNO - Analog Pin A0]
+          │
+    ┌─────┴──────┐
+    ▼            ▼
+[DC Fan via   [16x2 LCD Display]
+ Transistor]   Shows "T: XX.XX"
+ PWM Speed
+ Control
 ```
 
-1. **Sensing:** The temperature sensor outputs an analog voltage proportional to temperature, read by Arduino's ADC.
-2. **Processing:** Arduino converts the raw analog value to °C and compares against thresholds.
-3. **Fan Control:** Fan is turned ON/OFF (or speed-controlled via PWM) based on temperature level.
-4. **LED Indication:** LEDs provide a visual status of the current temperature zone.
+1. **Sensing:** The TMP sensor outputs an analog voltage read by Arduino's ADC on pin A0.
+2. **Processing:** Arduino converts the raw value to °C and maps it to a fan speed.
+3. **Display:** The 16x2 LCD continuously shows the current temperature reading.
+4. **Fan Control:** Fan speed is controlled via PWM — higher temperature = faster fan.
 
 ---
 
 ## 🌡️ Temperature Thresholds
 
-| Temperature Range | Fan State | LED Indicator |
-|-------------------|-----------|---------------|
-| Below 30°C        | OFF       | 🟢 Green ON   |
-| 30°C – 40°C       | LOW speed | 🟡 Yellow ON  |
-| Above 40°C        | HIGH speed| 🔴 Red ON     |
+| Temperature | Fan State  | LCD Display  |
+|-------------|------------|--------------|
+| Below 30°C  | OFF        | `T: XX.XX`   |
+| 30°C – 40°C | LOW speed  | `T: XX.XX`   |
+| Above 40°C  | HIGH speed | `T: XX.XX`   |
 
 ---
 
@@ -59,13 +67,14 @@ This project is the digital/microcontroller counterpart to an analog fan control
 | Component | Quantity | Purpose |
 |-----------|----------|---------|
 | Arduino UNO | 1 | Main microcontroller |
-| TMP36 / LM35 Temperature Sensor | 1 | Temperature sensing |
-| DC Motor (Fan) | 1 | Cooling fan |
-| NPN Transistor (e.g. PN2222) | 1 | Fan driver |
-| LEDs (Red, Yellow, Green) | 3 | Temperature indicators |
-| Resistors (220Ω) | 3 | LED current limiting |
-| Flyback Diode (1N4007) | 1 | Motor protection |
+| TMP Temperature Sensor | 1 | Analog temperature sensing |
+| DC Motor (Fan) | 1 | Cooling fan (PWM controlled) |
+| NPN Transistor | 1 | Fan motor driver |
+| 16x2 LCD Display | 1 | Real-time temperature display |
+| Potentiometer | 1 | LCD contrast adjustment |
+| Resistors | 2–3 | Current limiting / base resistor |
 | Breadboard | 1 | Circuit assembly |
+| Jumper Wires | Multiple | Connections |
 | Power Supply (5V) | 1 | Via Arduino USB |
 
 ---
@@ -82,30 +91,16 @@ The main sketch is located in the `/src` folder:
 ### Code Logic Summary
 
 ```cpp
-// Pseudocode overview
-readTemperature();         // Read analog pin → convert to °C
+readTemperature();        // Read TMP sensor → convert to °C
+lcd.print("T: ");
+lcd.print(temperature);   // Display on LCD
 
-if (temp > 40) {
-  fanSpeed = HIGH;         // Full speed
-  digitalWrite(RED_LED, HIGH);
-} else if (temp > 30) {
-  fanSpeed = MEDIUM;       // Half speed (PWM)
-  digitalWrite(YELLOW_LED, HIGH);
-} else {
-  fanSpeed = OFF;          // Fan off
-  digitalWrite(GREEN_LED, HIGH);
-}
-```
-
----
-
-## 🖼️ Simulation Screenshot
-
-The Tinkercad simulation screenshot is available in the `/simulation` folder:
-
-```
-/simulation
-  └── tinkercad_simulation.png   ← Circuit simulation screenshot
+if (temp > 40)
+  analogWrite(FAN_PIN, 255);   // Full speed
+else if (temp > 30)
+  analogWrite(FAN_PIN, 120);   // Low speed
+else
+  analogWrite(FAN_PIN, 0);     // Fan off
 ```
 
 ---
@@ -119,6 +114,7 @@ arduino-temperature-fan-automation/
 ├── simulation/
 │   └── tinkercad_simulation.png
 ├── README.md
+├── TROUBLESHOOTING.md
 └── LICENSE
 ```
 
@@ -128,16 +124,18 @@ arduino-temperature-fan-automation/
 
 ### Run in Tinkercad (Simulation)
 1. Open [Autodesk Tinkercad](https://www.tinkercad.com)
-2. Import or recreate the circuit as shown in the simulation screenshot
+2. Recreate the circuit as shown in the simulation screenshot
 3. Paste the `.ino` code into the code editor
 4. Click **"Start Simulation"**
+5. Click on the TMP sensor and drag the temperature slider to see the fan and LCD respond
 
 ### Run on Real Hardware
-1. Assemble the circuit on a breadboard as per the schematic
+1. Assemble the circuit on a breadboard as shown in the screenshot
 2. Open the `.ino` file in **Arduino IDE**
-3. Connect your Arduino UNO via USB
-4. Select the correct **Board** and **Port**
-5. Click **Upload**
+3. Install the **LiquidCrystal** library if not already present
+4. Connect your Arduino UNO via USB
+5. Select the correct **Board** and **Port**
+6. Click **Upload**
 
 ---
 
@@ -158,7 +156,7 @@ See the [LICENSE](LICENSE) file for full details.
 
 ## 👤 Author
 
-**Mamoon**
+**Mamoon**  
 Electronics Engineering Student
 
 ---

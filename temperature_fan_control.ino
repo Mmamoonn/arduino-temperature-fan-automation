@@ -9,38 +9,55 @@
  * ============================================================
  *
  * Description:
- * Reads temperature from a TMP36/LM35 sensor and controls a DC fan
- * and LED indicators based on defined temperature thresholds.
+ * Reads temperature from a TMP sensor and controls a DC fan
+ * via PWM based on temperature thresholds. Real-time temperature
+ * is displayed on a 16x2 LCD screen.
+ *
+ * Components:
+ *   - TMP Temperature Sensor    → Analog Pin A0
+ *   - DC Fan (via transistor)   → Digital PWM Pin 9
+ *   - 16x2 LCD Display          → Pins 7,8,10,11,12,13
+ *   - Potentiometer             → LCD contrast (Vo pin)
  *
  * Thresholds:
- *   < 30°C  → Fan OFF  | Green LED ON
- *   30–40°C → Fan LOW  | Yellow LED ON
- *   > 40°C  → Fan HIGH | Red LED ON
+ *   < 30°C  → Fan OFF
+ *   30–40°C → Fan LOW speed
+ *   > 40°C  → Fan FULL speed
  * ============================================================
  */
 
-// ── Pin Definitions ──────────────────────────────────────────
-const int TEMP_SENSOR_PIN = A0;   // TMP36 / LM35 analog input
-const int FAN_PIN         = 9;    // PWM pin for fan (via transistor)
-const int LED_GREEN       = 2;    // Green LED  → Normal temp
-const int LED_YELLOW      = 3;    // Yellow LED → Medium temp
-const int LED_RED         = 4;    // Red LED    → High temp
+#include <LiquidCrystal.h>
 
-// ── Temperature Thresholds (°C) ──────────────────────────────
-const float TEMP_LOW    = 30.0;   // Below this → fan off
-const float TEMP_HIGH   = 40.0;   // Above this → fan full speed
+// ── LCD Pin Configuration ─────────────────────────────────────
+// RS, EN, D4, D5, D6, D7
+LiquidCrystal lcd(7, 8, 10, 11, 12, 13);
 
-// ── Fan Speed Values (PWM 0–255) ─────────────────────────────
-const int FAN_OFF    = 0;
-const int FAN_LOW    = 120;
-const int FAN_HIGH   = 255;
+// ── Pin Definitions ───────────────────────────────────────────
+const int TEMP_SENSOR_PIN = A0;   // TMP sensor analog input
+const int FAN_PIN         = 9;    // PWM pin → transistor → fan
+
+// ── Temperature Thresholds (°C) ───────────────────────────────
+const float TEMP_LOW  = 30.0;    // Below → fan off
+const float TEMP_HIGH = 40.0;    // Above → fan full speed
+
+// ── Fan Speed Values (PWM 0–255) ──────────────────────────────
+const int FAN_OFF  = 0;
+const int FAN_LOW  = 120;
+const int FAN_HIGH = 255;
 
 // ── Setup ─────────────────────────────────────────────────────
 void setup() {
-  pinMode(FAN_PIN,    OUTPUT);
-  pinMode(LED_GREEN,  OUTPUT);
-  pinMode(LED_YELLOW, OUTPUT);
-  pinMode(LED_RED,    OUTPUT);
+  pinMode(FAN_PIN, OUTPUT);
+
+  // Initialize 16x2 LCD
+  lcd.begin(16, 2);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("  Temp Monitor  ");
+  lcd.setCursor(0, 1);
+  lcd.print("  Fan Control   ");
+  delay(2000);
+  lcd.clear();
 
   Serial.begin(9600);
   Serial.println("=== Temperature Fan Control System ===");
@@ -51,33 +68,37 @@ void setup() {
 void loop() {
   float temperature = readTemperature();
 
-  Serial.print("Temperature: ");
-  Serial.print(temperature);
-  Serial.println(" °C");
+  // ── Update LCD ──────────────────────────────────────────────
+  lcd.setCursor(0, 0);
+  lcd.print("T: ");
+  lcd.print(temperature, 2);   // 2 decimal places e.g. "T: 74.71"
+  lcd.print((char)223);        // Degree symbol °
+  lcd.print("C  ");
 
-  // Turn off all LEDs before setting the correct one
-  allLEDsOff();
-
+  // ── Fan Control Logic ────────────────────────────────────────
+  String fanStatus;
   if (temperature >= TEMP_HIGH) {
-    // HIGH temperature zone
     analogWrite(FAN_PIN, FAN_HIGH);
-    digitalWrite(LED_RED, HIGH);
-    Serial.println("Status: HIGH TEMP → Fan FULL SPEED 🔴\n");
-
+    fanStatus = "Fan: HIGH  ";
   } else if (temperature >= TEMP_LOW) {
-    // MEDIUM temperature zone
     analogWrite(FAN_PIN, FAN_LOW);
-    digitalWrite(LED_YELLOW, HIGH);
-    Serial.println("Status: MEDIUM TEMP → Fan LOW SPEED 🟡\n");
-
+    fanStatus = "Fan: LOW   ";
   } else {
-    // NORMAL temperature zone
     analogWrite(FAN_PIN, FAN_OFF);
-    digitalWrite(LED_GREEN, HIGH);
-    Serial.println("Status: NORMAL TEMP → Fan OFF 🟢\n");
+    fanStatus = "Fan: OFF   ";
   }
 
-  delay(1000);  // Read every 1 second
+  // ── Display Fan Status on LCD Row 2 ─────────────────────────
+  lcd.setCursor(0, 1);
+  lcd.print(fanStatus);
+
+  // ── Serial Monitor Output ────────────────────────────────────
+  Serial.print("Temperature: ");
+  Serial.print(temperature, 2);
+  Serial.print(" C  |  ");
+  Serial.println(fanStatus);
+
+  delay(1000);  // Refresh every 1 second
 }
 
 // ── Helper: Read Temperature in °C ───────────────────────────
@@ -88,16 +109,7 @@ float readTemperature() {
   float voltage = rawValue * (5.0 / 1023.0);
 
   // TMP36: Temp(°C) = (Voltage - 0.5) × 100
-  // LM35:  Temp(°C) = Voltage × 100
-  float tempC = (voltage - 0.5) * 100.0;  // Use for TMP36
-  // float tempC = voltage * 100.0;        // Uncomment for LM35
+  float tempC = (voltage - 0.5) * 100.0;
 
   return tempC;
-}
-
-// ── Helper: Turn Off All LEDs ─────────────────────────────────
-void allLEDsOff() {
-  digitalWrite(LED_GREEN,  LOW);
-  digitalWrite(LED_YELLOW, LOW);
-  digitalWrite(LED_RED,    LOW);
 }
